@@ -1,0 +1,154 @@
+name: Coffee CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coffee-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SDL_COMMIT: fa2c02bb6e21974a89ea9824bc53c9932abe5f9c
+  CTEST_OUTPUT_ON_FAILURE: "1"
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows / MSVC / Release
+            os: windows-latest
+            build_type: Release
+            artifact_name: Coffee-Windows-MSVC-Release
+
+          - name: Windows / MSVC / Debug
+            os: windows-latest
+            build_type: Debug
+            artifact_name: Coffee-Windows-MSVC-Debug
+
+          - name: Ubuntu / GCC / Release
+            os: ubuntu-latest
+            build_type: Release
+            artifact_name: Coffee-Ubuntu-GCC-Release
+
+    steps:
+      - name: Check out Coffee
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # SDL is pinned to an immutable commit so CI cannot silently change when
+      # an upstream branch or release tag moves.
+      - name: Check out SDL 3.4.16
+        uses: actions/checkout@v6
+        with:
+          repository: libsdl-org/SDL
+          ref: ${{ env.SDL_COMMIT }}
+          path: deps/SDL3
+          persist-credentials: false
+
+      - name: Install Ubuntu build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            ninja-build \
+            pkg-config \
+            libdbus-1-dev \
+            libdecor-0-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libudev-dev \
+            libwayland-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxkbcommon-dev \
+            libxrandr-dev \
+            libxss-dev \
+            wayland-protocols
+
+      - name: Configure Coffee with MSVC
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          cmake -S . -B build
+          -A x64
+          -DCOFFEE_BUILD_EXAMPLES=ON
+          -DCOFFEE_BUILD_TESTS=ON
+          -DCOFFEE_BUILD_VULKAN_MODULE=OFF
+          -DCOFFEE_LEAN_SDL=ON
+          -DCOFFEE_WARNINGS_AS_ERRORS=ON
+
+      - name: Configure Coffee with GCC
+        if: runner.os == 'Linux'
+        shell: bash
+        run: >-
+          cmake -S . -B build
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCOFFEE_BUILD_EXAMPLES=ON
+          -DCOFFEE_BUILD_TESTS=ON
+          -DCOFFEE_BUILD_VULKAN_MODULE=OFF
+          -DCOFFEE_LEAN_SDL=ON
+          -DCOFFEE_WARNINGS_AS_ERRORS=ON
+          -DSDL_X11_XTEST=OFF
+
+      - name: Build Coffee
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Run tests
+        run: >-
+          ctest
+          --test-dir build
+          --build-config ${{ matrix.build_type }}
+          --output-on-failure
+          --timeout 120
+
+      - name: Install Coffee SDK
+        run: >-
+          cmake
+          --install build
+          --config ${{ matrix.build_type }}
+          --prefix "${{ github.workspace }}/staging/Coffee"
+
+      - name: Package Coffee SDK
+        run: >-
+          cpack
+          --config build/CPackConfig.cmake
+          -G ZIP
+          -C ${{ matrix.build_type }}
+          -B packages
+
+      - name: Upload Coffee SDK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: packages/*.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload test log after failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-test-log
+          path: build/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
+          retention-days: 7

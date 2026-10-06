@@ -1,0 +1,152 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-common",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "COFFEE_BUILD_EXAMPLES": "ON",
+        "COFFEE_BUILD_TESTS": "ON",
+        "COFFEE_BUILD_VULKAN_MODULE": "OFF",
+        "COFFEE_LEAN_SDL": "ON"
+      }
+    },
+    {
+      "name": "standalone-msvc",
+      "hidden": true,
+      "inherits": "windows-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_RC_COMPILER": "rc",
+        "CMAKE_MT": "mt"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "displayName": "Coffee - Standalone MSVC + Ninja (Release)",
+      "description": "Recommended IDE-free Coffee.dll build using cl.exe and Ninja",
+      "inherits": "standalone-msvc",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/windows-msvc-release",
+      "installDir": "${sourceDir}/dist/Coffee",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "windows-msvc-debug",
+      "displayName": "Coffee - Standalone MSVC + Ninja (Debug)",
+      "inherits": "standalone-msvc",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/windows-msvc-debug",
+      "installDir": "${sourceDir}/dist/Coffee-Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "windows-msvc-vulkan",
+      "displayName": "Coffee + Vulkan - Standalone MSVC + Ninja",
+      "inherits": "windows-msvc",
+      "binaryDir": "${sourceDir}/build/windows-msvc-vulkan-release",
+      "installDir": "${sourceDir}/dist/Coffee-Vulkan",
+      "cacheVariables": {
+        "COFFEE_BUILD_VULKAN_MODULE": "ON"
+      }
+    },
+    {
+      "name": "windows-msvc-nmake",
+      "displayName": "Coffee - Standalone MSVC + NMake (Release)",
+      "description": "IDE-free fallback when Ninja is unavailable",
+      "inherits": "standalone-msvc",
+      "generator": "NMake Makefiles",
+      "binaryDir": "${sourceDir}/build/windows-msvc-nmake-release",
+      "installDir": "${sourceDir}/dist/Coffee",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "windows-vs2022",
+      "displayName": "Coffee - Visual Studio 2022 (Optional)",
+      "description": "Optional multi-configuration generator for systems with Visual Studio",
+      "inherits": "windows-common",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/windows-vs2022",
+      "installDir": "${sourceDir}/dist/Coffee"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-msvc"
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-msvc-debug"
+    },
+    {
+      "name": "windows-vulkan-release",
+      "configurePreset": "windows-msvc-vulkan"
+    },
+    {
+      "name": "windows-nmake-release",
+      "configurePreset": "windows-msvc-nmake"
+    },
+    {
+      "name": "windows-vs2022-release",
+      "configurePreset": "windows-vs2022",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-msvc",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-msvc-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-vulkan-release",
+      "configurePreset": "windows-msvc-vulkan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-nmake-release",
+      "configurePreset": "windows-msvc-nmake",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-vs2022-release",
+      "configurePreset": "windows-vs2022",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

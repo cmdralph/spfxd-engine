@@ -1,0 +1,8 @@
+The generated GLAD loader in this directory is available under either the
+WTFPL or CC0-1.0 license. Its generated files carry the corresponding SPDX
+identifier.
+
+The bundled Khronos platform definitions retain their original permissive
+license notice in include/KHR/khrplatform.h.
+
+GLAD project: https://github.com/Dav1dde/glad
